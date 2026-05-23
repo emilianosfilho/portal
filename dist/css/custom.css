@@ -1,0 +1,95 @@
+.action-service {
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    background-color: #fff;
+    right: 0;
+    top: 5em;
+    padding: 8px 15px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 5px rgba(0,0,0,.102);
+}
+.loading-spinner{
+  width:30px;
+  height:30px;
+  border:2px solid indigo;
+  border-radius:50%;
+  border-top-color:#0001;
+  display:inline-block;
+  animation:loadingspinner .7s linear infinite;
+}
+@keyframes loadingspinner{
+  0%{
+    transform:rotate(0deg)
+  }
+  100%{
+    transform:rotate(360deg)
+  }
+}
+/* Classe CSS para ocultar o elemento */
+.hidden {
+    display: none;
+}
+.card-icon-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-bg-icon {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.5rem;
+  font-size: 6rem;
+  opacity: 0.25;
+  color: #fff;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* garante que o texto fique acima do ícone */
+.card-body > *:not(.card-bg-icon) {
+  position: relative;
+  z-index: 1;
+}
+
+.card-bg {
+  background-image: url('/icons/user.svg');
+  background-repeat: no-repeat;
+  background-position: right 1rem bottom 1rem;
+  background-size: 120px;
+}
+/* Estilo das bolhas de conversa */
+.historico-item {
+    max-width: 80%;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 15px;
+    position: relative;
+    font-size: 0.95rem;
+}
+
+/* Quando o usuário logado fala (Direita/Verde) */
+.bubble-me {
+    align-self: flex-end;
+    background-color: #dcf8c6; /* Verde WhatsApp */
+    border-bottom-right-radius: 2px;
+    margin-left: auto;
+}
+
+/* Quando o suporte/outro fala (Esquerda/Branco) */
+.bubble-other {
+    align-self: flex-start;
+    background-color: #ffffff;
+    border-bottom-left-radius: 2px;
+    margin-right: auto;
+    border: 1px solid #dee2e6;
+}
+
+.anexo-container img, .anexo-container video {
+    border: 1px solid rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.anexo-container img:hover {
+    transform: scale(1.02);
+}

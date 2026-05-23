@@ -1,0 +1,5 @@
+/*BUSCA PRODUTOS VENDIDOS NO DIA*/
+select codprod, DESCRICAO, numoriginal, codfab from pcprodut where codprod in (select codprod from pcmov where codoper = 'S' and dtmov = trunc(sysdate))
+
+BUSCA CLIENTES
+select codcli, cliente, emailnfe from pcclient where codcli in (select codcli from pcmov where codoper = 'S' and dtmov >= trunc(sysdate-1))

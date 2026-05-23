@@ -1,0 +1,478 @@
+<?php 
+session_start();
+ini_set("xdebug.var_display_max_depth", -1);
+ini_set("xdebug.var_display_max_children", -1);
+ini_set("xdebug.var_display_max_data", -1);
+ini_set("display_errors", 1);
+ini_set('error_reporting', E_ALL ^ E_NOTICE);
+ini_set('memory_limit', '24G');
+error_reporting(E_ALL & ~(E_WARNING|E_NOTICE));
+date_default_timezone_set('America/Manaus');
+require_once "../../pages/conf/define.php";
+require_once "../../pages/conf/functions.php";
+require_once "../../pages/conf/conectaOracle.php";
+require_once '../../pages/logistica/function.php';
+require_once "../../plugins/code39/code39.php";
+
+// $debug = true;
+
+if (!empty($_POST)) {
+	$dados = $_POST;
+} else {
+	$dados = $_GET;
+}
+if($debug) varDump2($dados);
+
+
+// NUMERO DE RESULTADOS POR PÁGINA
+$regTotal 			= 0;
+$totalPaginas 		= 0;
+$paginaAtual 		= 0;
+$regAtual 			= 0;
+$regPorPagina 		= 20;
+$paginas 			= array();
+
+if (isset($PDF)) 
+	unset($PDF);
+$PDF = array();
+
+if(!$PDF['CABECALHO'] = buscaPCPEDC($dados)){
+	$PDF['CABECALHO'] = buscaPCPEDCFV($dados);
+}
+
+if(!$PDF['ITENS'] = buscaPCPEDIConferenciaNUMPED($PDF['CABECALHO']['NUMPED'])){
+	$PDF['ITENS'] = buscaPCPEDIConferenciaNUMPEDRCA($PDF['CABECALHO']['NUMPEDRCA']);
+}
+
+if($debug) varDump2($PDF); 
+
+
+if ($PDF['ITENS']==false || empty($PDF['ITENS'])) {
+	exibeMensagem("Nenhum produto válido no pedido de venda!");
+	fechaAba();
+} else {
+
+	$regTotal = count($PDF['ITENS']);
+	if($debug) varDump2("regTotal: {$regTotal}");
+	
+	$paginas[$paginaAtual]["inicio"] = 0;
+
+	if ($regTotal <= $regPorPagina){
+		$paginas[$paginaAtual]["fim"] = ($regTotal-1);
+	} else {
+		$paginas[$paginaAtual]["fim"] = ($regPorPagina-1);
+
+		if ($regTotal > $regPorPagina){
+			$regTmp = ($regTotal - $regPorPagina);
+			while ($paginas[$paginaAtual]["fim"] < ($regTotal-1)) {
+				$paginaAtual++;
+				$paginas[$paginaAtual]["inicio"] = ($paginaAtual*$regPorPagina);
+				$paginas[$paginaAtual]["fim"] 	 = ((($paginaAtual+1)*$regPorPagina)-1);
+
+				if ($paginas[$paginaAtual]["fim"] > ($regTotal-1) ) {
+					$paginas[$paginaAtual]["fim"] = ($regTotal-1);
+				}
+			}
+
+		}
+		
+	}
+}
+
+$ultimaPagina = reset($paginas);
+// if($debug) varDump2($ultimaPagina);
+
+if (($ultimaPagina['fim'] - $ultimaPagina['inicio']) > 10) {
+	$paginaAtual++;
+	$paginas[$paginaAtual]["inicio"] = false;
+	$paginas[$paginaAtual]["fim"] 	 = false;
+}
+if($debug) varDump2($paginas);
+// varDump2($paginas);
+
+$erro 			= 0;
+$alturaLinha	= 5;
+
+/*############################################################################################*/
+$pdf = new PDF_Code39();
+$pdf = new PDF_Code39('L','mm','A4');
+
+$pdf->AliasNbPages();
+
+$QUANTIDADETOTALPEDIDO =0;
+$VALORTOTALDESCONTO =0;
+$VALORTOTALPEDIDO =0;
+$PESOLIQTOTAL =0;
+
+foreach ($paginas as $pagina => $value) {
+
+	$pdf->AddPage();
+
+	// LOGO QUE SERÁ COLOCADO NO RELATÓRIO
+	$regAtualogo_header 	= "../../".DIR_IMG."logo_header.png";
+	$pdf->Image($regAtualogo_header,10,10,50,15);
+	$pdf->SetTextColor(139,0,0);
+	$pdf->SetFont($font_arial,$style_b,$tam_18);
+	$pdf->SetFillColor($r_light,$g_light,$b_light);
+	$pdf->Cell(50,15,"", 0, 0);
+	$pdf->Cell(170,15, converterUTF8("CONFERÊNCIA E EXPEDIÇÃO"), 0, 0, 'C', 1);
+	
+	if (is_null($PDF['CABECALHO']['NUMPED'])) {
+		$pdf->Cell(235, 10, '', 0, 1);
+	} else {
+		$pdf->Code39(235, 10, $PDF['CABECALHO']['NUMPED'], 1, 15);
+		$pdf->Cell(1,20,"", 0, 1);
+	}
+	
+	/*#####################################################################################################*/
+	$pdf->SetFillColor(255,255,255);/* Branco */
+	$pdf->SetTextColor(0,0,0); /* Preto */
+	$pdf->Cell(1,$alturaLinha,"", 0, 1);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, "Cliente:" 				, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(85, $alturaLinha, substr($PDF['CABECALHO']['CODCLI']."- ".converterUTF8($PDF['CABECALHO']['CLIENTE']), 0, 40) 	, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(10, $alturaLinha, "CNPJ:" 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(52, $alturaLinha, $PDF['CABECALHO']['CNPJ']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(30, $alturaLinha, converterUTF8("Número do Pedido:") 				, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(40, $alturaLinha, $PDF['CABECALHO']['NUMPED']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(35, $alturaLinha, converterUTF8("Número do Orçamento:") 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(20, $alturaLinha, $PDF['CABECALHO']['NUMPEDCLI']		, 0, 0);
+	$pdf->Cell(1, $alturaLinha,  ""  , 0, 1);
+
+	/*#####################################################################################################*/
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, converterUTF8("Endereço:") 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(85, $alturaLinha, converterUTF8($PDF['CABECALHO']['ENDERECO'])  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(5, $alturaLinha, "Nr:" 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(57, $alturaLinha, $PDF['CABECALHO']['NUMERO']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(10, $alturaLinha, "Bairro:" 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(60, $alturaLinha, converterUTF8($PDF['CABECALHO']['BAIRRO'])  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(8, $alturaLinha, "CEP:" 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(40, $alturaLinha, $PDF['CABECALHO']['CEPENT']  		, 0, 0);
+	$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+	/*#####################################################################################################*/
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, "Telefone:" 			, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(85, $alturaLinha, $PDF['CABECALHO']['TELENT']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(22, $alturaLinha, "Insc. Estadual:" 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(40, $alturaLinha, $PDF['CABECALHO']['IESTADUAL']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, converterUTF8("Município:") 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(55, $alturaLinha, $PDF['CABECALHO']['CIDADE']  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(5, $alturaLinha, "UF:" 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(15, $alturaLinha, $PDF['CABECALHO']['UF']  		, 0, 1);
+
+	
+
+	/*#####################################################################################################*/
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, "RCA:" 					, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(85, $alturaLinha, $PDF['CABECALHO']['CODUSUR']."- ".$PDF['CABECALHO']['RCA']  	, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, "Data Fat.:" 					, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(47, $alturaLinha, formataDataOracletoBr($PDF['CABECALHO']['DATA'])  	, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(25, $alturaLinha, "Ordem Compra:" 					, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(45, $alturaLinha, str_replace("IMPORTADO VIA APP ORCAMENTO -", "", $PDF['CABECALHO']['OBSERVACAO']) , 0, 1);
+
+	
+	/*#####################################################################################################*/
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(15, $alturaLinha, "Filial:" 					, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(85, $alturaLinha, $PDF['CABECALHO']['CODFILIAL']."- ".$PDF['CABECALHO']['FILIAL']  	, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(16, $alturaLinha, converterUTF8("Cobrança:") 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(46, $alturaLinha, substr($PDF['CABECALHO']['CODCOB']."- ".$PDF['CABECALHO']['COBRANCA'], 0, 40)  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(27, $alturaLinha, "Plano Pagamento:" 						, 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(43, $alturaLinha, $PDF['CABECALHO']['CODPLPAG']."- ".converterUTF8($PDF['CABECALHO']['PLPAG'])  		, 0, 0);
+	$pdf->SetFont('arial','b',8);
+	$pdf->Cell(14, $alturaLinha, converterUTF8("Posição:"), 0, 0);
+	$pdf->SetFont('arial','',8);
+	$pdf->Cell(34, $alturaLinha, $PDF['CABECALHO']['POSICAO']  , 0, 1);
+
+	/*#####################################################################################################*/
+	if (isset($PDF['CABECALHO']['IMPORTADO']) && ($PDF['CABECALHO']['IMPORTADO'] == '3')) {
+		$pdf->SetFont('arial','b',8);
+		$pdf->Cell(25, $alturaLinha, converterUTF8("Motivo Rejeição:"), 0, 0);
+		$pdf->SetFont($font_arial,$style_n,$tam_9);
+		$pdf->SetTextColor($r_danger,$g_danger,$b_danger);
+		$pdf->Cell(255, $alturaLinha, mb_strtoupper(trim($PDF['CABECALHO']['OBSERVACAO_PC']), 'UTF-8') , 1, 1);
+	}
+	
+	
+
+	/*#####################################################################################################*/
+	$contadorRegPagina = 0;
+
+	if ($value["inicio"] !== false && $value["fim"] !== false) {
+
+		for ($regAtual=$value["inicio"]; $regAtual <= $value["fim"]; $regAtual++) { 
+			
+			if($debug) varDump2("regAtual: {$regAtual}");
+
+			$contadorRegPagina++;
+
+			if ($contadorRegPagina == 1) {
+				/*#####################################################################################################*/
+				$pdf->Cell(280, $alturaLinha,  ""  , 0, 1); // Pula 1 linha
+				$pdf->SetFont($font_arial,$style_b,$tam_9);
+				$pdf->SetTextColor($r_black,$g_black,$b_black);
+				$pdf->Cell(10, $alturaLinha, "#"						, 'B', 0);
+				$pdf->Cell(20, $alturaLinha, "Cod VEMAP"				, 'B', 0);
+				$pdf->Cell(90, $alturaLinha, converterUTF8("Descrição")			, 'B', 0);
+				$pdf->Cell(40, $alturaLinha, "Marca"				, 'B', 0);
+				$pdf->Cell(30, $alturaLinha, converterUTF8("Locação")				, 'B', 0);
+				$pdf->Cell(10, $alturaLinha, "UN"					, 'B', 0);
+				$pdf->Cell(10, $alturaLinha, "Qtd"					, 'B', 0, 'R');
+				$pdf->Cell(30, $alturaLinha, converterUTF8("Preço Un")				, 'B', 0, 'R');
+				$pdf->Cell(40, $alturaLinha, "Vl. Total"			, 'B', 1, 'R');
+			}
+			
+			
+			if ($regAtual <= $regTotal) {
+				if (isset($PDF['CABECALHO']['IMPORTADO']) && ($PDF['CABECALHO']['IMPORTADO'] == '3')) {
+					$pdf->SetFont($font_arial,$style_n,$tam_9);
+					$pdf->SetTextColor($r_danger,$g_danger,$b_danger);
+					$pdf->Cell(10, $alturaLinha, ($regAtual+1)	, 0, 0);
+					$pdf->Cell(20, $alturaLinha, "www".$PDF['ITENS'][$regAtual]['CODPROD']			, 0, 0);
+					$pdf->Cell(90, $alturaLinha, $PDF['ITENS'][$regAtual]['PRODUTO']			, 0, 0);
+					$pdf->Cell(40, $alturaLinha, $PDF['ITENS'][$regAtual]['MARCA']				, 0, 0);
+					$pdf->Cell(120, $alturaLinha, $PDF['ITENS'][$regAtual]['OBSERVACAO_PC']	, 0, 1, 'L');
+				} else {
+
+					$PDF['ITENS'][$regAtual]['VALORTOTAL'] = (moedaPHP($PDF['ITENS'][$regAtual]['QT']) * moedaPHP($PDF['ITENS'][$regAtual]['PVENDA']));
+					$QUANTIDADETOTALPEDIDO 	+= moedaPHP($PDF['ITENS'][$regAtual]['QT']);
+					$VALORTOTALPEDIDO 		+= moedaPHP($PDF['ITENS'][$regAtual]['VALORTOTAL']);
+
+					$pdf->SetFont($font_arial,$style_n,$tam_9);
+					$pdf->SetTextColor($r_black,$g_black,$b_black);
+					$pdf->Cell(10, $alturaLinha, ($regAtual+1) 	, 0, 0);
+					$pdf->Cell(20, $alturaLinha, $PDF['ITENS'][$regAtual]['CODPROD']			, 0, 0);
+					$pdf->Cell(90, $alturaLinha, $PDF['ITENS'][$regAtual]['PRODUTO']			, 0, 0);
+					$pdf->Cell(40, $alturaLinha, $PDF['ITENS'][$regAtual]['MARCA']				, 0, 0);
+					$pdf->Cell(30, $alturaLinha, $PDF['ITENS'][$regAtual]['LOCACAO']			, 0, 0);
+					$pdf->Cell(10, $alturaLinha, $PDF['ITENS'][$regAtual]['UNIDADE']			, 0, 0);
+					$pdf->Cell(10, $alturaLinha, moeda($PDF['ITENS'][$regAtual]['QT'])		, 0, 0, 'R');
+					$pdf->Cell(30, $alturaLinha, moeda($PDF['ITENS'][$regAtual]['PVENDA'])			, 0, 0, 'R');
+					$pdf->Cell(40, $alturaLinha, moeda($PDF['ITENS'][$regAtual]['VALORTOTAL'])		, 0, 1, 'R');
+				}
+			}
+		}
+
+		if ($regAtual == $regTotal) {
+
+			// varDump2("regAtual: {$regAtual}");
+			// varDump2("regTotal: {$regTotal}");
+		
+			$pdf->SetFont('arial','b',11);
+			$pdf->SetTextColor($r_black,$g_black,$b_black);
+			$pdf->SetFillColor($r_light,$g_light,$b_light);
+			$pdf->Cell(200, ($alturaLinha), "Total:"				, 'T', 0, 'L', 1);
+			$pdf->Cell(10, ($alturaLinha), moeda($QUANTIDADETOTALPEDIDO) 	, 'T', 0, 'R', 1);
+			$pdf->Cell(40, ($alturaLinha), "" 						, 'T', 0, 'R', 1);
+			$pdf->Cell(30, ($alturaLinha), moeda($VALORTOTALPEDIDO)	, 'T', 1, 'R', 1);
+
+			$alturaLinha = ($alturaLinha*1.2);
+			$pdf->Cell(280,$alturaLinha,"", "B", 1);
+			$pdf->SetTextColor($r_black,$g_black,$b_black);
+
+			/*#####################################################################################################*/
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(17, $alturaLinha, "Emitente:" 			, 0, 0);
+			$pdf->SetFont('arial','',10);
+			$pdf->Cell(213, $alturaLinha, converterUTF8($PDF['CABECALHO']['EMITENTE'])  		, 0, 0);
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(25, $alturaLinha, "Vl. Pedido:" 			, 0, 0, 'R');
+			$pdf->SetFont('arial','',12);
+			$pdf->Cell(25, $alturaLinha, moeda($VALORTOTALPEDIDO)  		, 0, 0, 'R');
+			$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+			/*#####################################################################################################*/
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(25, $alturaLinha, "Transportador:" 			, 0, 0);
+			$pdf->SetFont('arial','',10);
+			$pdf->Cell(105, $alturaLinha, $PDF['CABECALHO']['TRANSPORTADORA']  		, 0, 0);
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(30, $alturaLinha, "Frete Despacho:" 			, 0, 0);
+			$pdf->SetFont('arial','',10);
+			$pdf->Cell(20, $alturaLinha, $PDF['CABECALHO']['FRETEDESPACHO']  		, 0, 0);
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(30, $alturaLinha, "Frete Redespacho:" 			, 0, 0);
+			$pdf->SetFont('arial','',10);
+			$pdf->Cell(20, $alturaLinha, $PDF['CABECALHO']['FRETEREDESPACHO']  		, 0, 0);
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(25, $alturaLinha, "Vl. Frete:" 			, 0, 0, 'R');
+			$pdf->SetFont('arial','',12);
+			$pdf->Cell(25, $alturaLinha, moeda($PDF['CABECALHO']['VLFRETE'])  		, 0, 0, 'R');
+			$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+			/*#####################################################################################################*/
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(30, $alturaLinha, converterUTF8("Observações: ") 			, 0, 0);
+			$pdf->SetFont('arial','',10);
+			$pdf->Cell(200, $alturaLinha, '## '.converterUTF8($PDF['CABECALHO']['OBSENTREGA1']).' ##'  		, 0, 0);
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(25, $alturaLinha, "Vl. Total:" 			, 0, 0, 'R');
+			$pdf->SetFont('arial','',12);
+			$pdf->Cell(25, $alturaLinha, moeda($VALORTOTALPEDIDO + $PDF['CABECALHO']['VLFRETE'])  		, 0, 0, 'R');
+			$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+			$pdf->Cell(280, (3*$alturaLinha), '', 0, 1);
+
+			$pdf->SetTextColor(0,0,0);
+
+			$alturaLinha = ($alturaLinha*0.7);
+
+			$pdf->SetFont('arial','',8);
+			$pdf->Cell(100, $alturaLinha, converterUTF8("SEPARADOR"), 'T', 0, 'C');
+			$pdf->Cell(80, $alturaLinha, '', 0, 0);
+			$pdf->Cell(100, $alturaLinha, converterUTF8("CONFERENTE"), 'T', 1, 'C');
+
+			$pdf->SetFont('arial','b',10);
+			$pdf->Cell(100, $alturaLinha, converterUTF8((!empty($PDF['CABECALHO']['SEPARADOR'])?$PDF['CABECALHO']['SEPARADOR']:'')), 0, 0, 'C');
+			$pdf->Cell(80, $alturaLinha, '', 0, 0);
+			$pdf->Cell(100, $alturaLinha, converterUTF8(""), 0, 1, 'C');
+		}
+
+	} else {
+
+		// varDump2("regAtual: {$regAtual}");
+		// varDump2("regTotal: {$regTotal}");
+	
+		$pdf->SetFont('arial','b',11);
+		$pdf->SetTextColor($r_black,$g_black,$b_black);
+		$pdf->SetFillColor($r_light,$g_light,$b_light);
+		$pdf->Cell(200, ($alturaLinha), "Total:"				, 'T', 0, 'L', 1);
+		$pdf->Cell(10, ($alturaLinha), moeda($QUANTIDADETOTALPEDIDO) 	, 'T', 0, 'R', 1);
+		$pdf->Cell(40, ($alturaLinha), "" 						, 'T', 0, 'R', 1);
+		$pdf->Cell(30, ($alturaLinha), moeda($VALORTOTALPEDIDO)	, 'T', 1, 'R', 1);
+
+		$alturaLinha = ($alturaLinha*1.2);
+		$pdf->Cell(280,$alturaLinha,"", "B", 1);
+		$pdf->SetTextColor($r_black,$g_black,$b_black);
+
+		/*#####################################################################################################*/
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(17, $alturaLinha, "Emitente:" 			, 0, 0);
+		$pdf->SetFont('arial','',10);
+		$pdf->Cell(213, $alturaLinha, converterUTF8($PDF['CABECALHO']['EMITENTE'])  		, 0, 0);
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(25, $alturaLinha, "Vl. Pedido:" 			, 0, 0, 'R');
+		$pdf->SetFont('arial','',12);
+		$pdf->Cell(25, $alturaLinha, moeda($VALORTOTALPEDIDO)  		, 0, 0, 'R');
+		$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+		/*#####################################################################################################*/
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(25, $alturaLinha, "Transportador:" 			, 0, 0);
+		$pdf->SetFont('arial','',10);
+		$pdf->Cell(105, $alturaLinha, $PDF['CABECALHO']['TRANSPORTADORA']  		, 0, 0);
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(30, $alturaLinha, "Frete Despacho:" 			, 0, 0);
+		$pdf->SetFont('arial','',10);
+		$pdf->Cell(20, $alturaLinha, $PDF['CABECALHO']['FRETEDESPACHO']  		, 0, 0);
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(30, $alturaLinha, "Frete Redespacho:" 			, 0, 0);
+		$pdf->SetFont('arial','',10);
+		$pdf->Cell(20, $alturaLinha, $PDF['CABECALHO']['FRETEREDESPACHO']  		, 0, 0);
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(25, $alturaLinha, "Vl. Frete:" 			, 0, 0, 'R');
+		$pdf->SetFont('arial','',12);
+		$pdf->Cell(25, $alturaLinha, moeda($PDF['CABECALHO']['VLFRETE'])  		, 0, 0, 'R');
+		$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+		/*#####################################################################################################*/
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(30, $alturaLinha, converterUTF8("Observações: ") 			, 0, 0);
+		$pdf->SetFont('arial','',10);
+		$pdf->Cell(200, $alturaLinha, '## '.converterUTF8($PDF['CABECALHO']['OBSENTREGA1']).' ##'  		, 0, 0);
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(25, $alturaLinha, "Vl. Total:" 			, 0, 0, 'R');
+		$pdf->SetFont('arial','',12);
+		$pdf->Cell(25, $alturaLinha, moeda($VALORTOTALPEDIDO + $PDF['CABECALHO']['VLFRETE'])  		, 0, 0, 'R');
+		$pdf->Cell(1, $alturaLinha,  ""  , 0, 1); // Quebra linha
+
+		$pdf->Cell(280, (3*$alturaLinha), '', 0, 1);
+
+		$pdf->SetTextColor(0,0,0);
+
+		$alturaLinha = ($alturaLinha*0.7);
+
+		$pdf->SetFont('arial','',8);
+		$pdf->Cell(100, $alturaLinha, converterUTF8("SEPARADOR"), 'T', 0, 'C');
+		$pdf->Cell(80, $alturaLinha, '', 0, 0);
+		$pdf->Cell(100, $alturaLinha, converterUTF8("CONFERENTE"), 'T', 1, 'C');
+
+		$pdf->SetFont('arial','b',10);
+		$pdf->Cell(100, $alturaLinha, converterUTF8((!empty($PDF['CABECALHO']['SEPARADOR'])?$PDF['CABECALHO']['SEPARADOR']:'')), 0, 0, 'C');
+		$pdf->Cell(80, $alturaLinha, '', 0, 0);
+		$pdf->Cell(100, $alturaLinha, converterUTF8(""), 0, 1, 'C');
+	}
+
+
+
+
+
+	/*#####################################################################################################*/
+	$pdf->setXY(10,180);
+
+	$pdf->SetFont('arial','',8);
+	$pdf->SetTextColor(0,0,0);
+	$pdf->Cell(140, $alturaLinha, "Arquivo gerado em: ".@date('d/m/Y H:i:s'), 'T', 0, 'L');
+	$pdf->Cell(140, $alturaLinha, converterUTF8("Página ".($pagina+1)." de ".count($paginas)), 'T', 1, 'R');
+
+}
+
+
+
+	/*#####################################################################################################*/
+
+if(!$debug){
+	### TIPO DO PDF GERADO ###
+	//I-> envia o arquivo embutido para o navegador. O visualizador de PDF é usado, se disponível.
+	//D-> enviar para o navegador e forçar o download de um arquivo com o nome fornecido pelo nome.
+	//F-> salvar em um arquivo local com o nome dado pelo nome (pode incluir um caminho).
+	//S-> retorna o documento como uma string.
+	$tipo_pdf = "I";
+
+	//TÍTULO DO RELATÓRIO
+	$titulo = "CONFERÊNCIA E EXPEDIÇÃO";
+
+	//ENDEREÇO ONDE SERÁ GERADO O PDF
+	$end_final = $PDF['CABECALHO']['NUMPED'].'_'.str_replace(" ", "_", $titulo).".pdf";
+
+	//SAIDA DO PDF
+	$pdf->Output($tipo_pdf, $end_final);
+	$pdf->Close();
+}
+
+
+?>

@@ -1,0 +1,8 @@
+<?php  
+if ($_SESSION['INEXISTENTES']['MARCA']) {
+	foreach ($_SESSION['INEXISTENTES']['MARCA'] as $key => $MARCA) {
+		$sql = "INSERT INTO PCMARCA (CODMARCA, MARCA, DTCADASTRO, DTULTALTER) VALUES ((SELECT NVL(MAX(CODMARCA),0)+1 FROM PCMARCA), '".$MARCA."', SYSDATE, SYSDATE)";
+		// varDump2($sql);
+		executarOracle($sql);
+	}
+}

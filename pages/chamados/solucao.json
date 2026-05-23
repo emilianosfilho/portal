@@ -1,0 +1,66 @@
+[
+  {
+    "id": "1",
+    "solucao": "Mudança no sistema: Adição/Edição de funcionalidade aplicada."
+  },
+  {
+    "id": "2",
+    "solucao": "Ajuste de Configuração: Mudanças em parâmetros do sistema, software ou hardware que corrigiram a falha."
+  },
+  {
+    "id": "3",
+    "solucao": "Troca de Equipamento: Quando a solução foi a substituição física de um item defeituoso."
+  },
+  {
+    "id": "4",
+    "solucao": "Atualização de Software/Patch: O erro foi corrigido através da instalação de uma nova versão ou correção de segurança."
+  },
+  {
+    "id": "5",
+    "solucao": "Esclarecimento de Dúvida: O usuário apenas precisava de uma explicação sobre como usar uma funcionalidade."
+  },
+  {
+    "id": "6",
+    "solucao": "Treinamento Realizado: Finalizado após instruir o usuário sobre o processo correto para evitar recorrência."
+  },
+  {
+    "id": "7",
+    "solucao": "Encaminhado para FAQ/Base de Conhecimento: O chamado foi fechado após o envio de um artigo tutorial que resolveu a questão."
+  },
+  {
+    "id": "8",
+    "solucao": "Problema de Infraestrutura Externa: Queda de internet do provedor, falta de energia elétrica, etc."
+  },
+  {
+    "id": "9",
+    "solucao": "Aguardando Fornecedor (Concluído): Quando o suporte do fabricante resolveu a questão."
+  },
+  {
+    "id": "10",
+    "solucao": "Bug Reportado ao Desenvolvimento: O chamado de suporte é fechado e transformado em um ticket de Correção de Bug no backlog dos desenvolvedores."
+  },
+  {
+    "id": "11",
+    "solucao": "Chamado Duplicado: Quando o usuário abre dois tickets para o mesmo problema (referenciar o número do ticket principal)."
+  },
+  {
+    "id": "12",
+    "solucao": "Solicitação Cancelada pelo Usuário: O cliente desistiu da requisição ou resolveu o problema por conta própria."
+  },
+  {
+    "id": "13",
+    "solucao": "Sem Retorno do Usuário (Timeout): O suporte solicitou informações, mas o usuário não respondeu após 3 dias."
+  },
+  {
+    "id": "14",
+    "solucao": "Fora do Escopo: A solicitação não faz parte dos serviços cobertos pelo contrato ou departamento."
+  },
+  {
+    "id": "15",
+    "solucao": "Manutenção Preventiva: Finalização de rotinas de limpeza, backup ou verificação de integridade."
+  },
+  {
+    "id": "16",
+    "solucao": "Reparo Físico: Soldagem, limpeza de componentes ou conserto de periféricos."
+  }
+]

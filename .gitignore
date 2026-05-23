@@ -1,0 +1,13 @@
+acessos.md
+define.php
+
+# Ignorar arquivos de configuração do VS Code (opcional, mas recomendado)
+.vscode/
+
+# Ignorar instaladores e compactados
+*.zip
+*.exe
+*.rar
+
+# Ignorar completamente a pasta plugins
+plugins/

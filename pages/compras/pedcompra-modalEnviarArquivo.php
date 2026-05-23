@@ -1,0 +1,42 @@
+<div class="modal fade" id="pedcompra-modalEnviarArquivo" role="dialog" aria-labelledby="labelmodalAlteraSenha" aria-hidden="true">
+  <div class="modal-dialog text-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h4 class="modal-title" id="labelmodalAlteraSenha">
+          <i class="fa-solid fa-send"></i> Enviar Arquivo
+        </h4>
+      </div>
+      <form role="form" class="STYLE-NAME" action="index.php" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="op" value="110">
+        <input type="hidden" name="aba" value="produto">
+        <input type="hidden" name="NOMEARQUIVO" value="PEDCOMPRA">
+
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-12 mb-3">
+              <label class="col-form-label">Selecione o arquivo:</label>
+                <div class="input-group btn-group">
+                  <div class="input-group">
+                    <input type="file" name="arquivo" class="form-control" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                  </div>
+                  <code>Somente arquivos xls ou xlsx serão aceitos.</code>
+                </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fa fa-ban"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" name="acao" value="enviarArquivo">
+            <i class="fa fa-forward"></i> Avançar
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>

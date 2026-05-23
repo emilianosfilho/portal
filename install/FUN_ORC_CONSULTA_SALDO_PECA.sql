@@ -1,0 +1,27 @@
+CREATE OR REPLACE FUNCTION VEMAP.FUN_ORC_CONSULTA_SALDO_PECA(v_codpeca IN VARCHAR2)
+   RETURN NUMBER
+   IS SALDOGERAL NUMBER(11,0);
+   BEGIN
+      SELECT NVL(SUM(CASE WHEN NVL(E.QTESTGER, 0) - NVL(E.QTINDENIZ, 0) - NVL(E.QTBLOQUEADA, 0) < 0 THEN 0 ELSE NVL(E.QTESTGER, 0) - NVL(E.QTINDENIZ, 0) - NVL(E.QTBLOQUEADA, 0) END),0) AS SALDO
+        INTO SALDOGERAL
+        FROM PCPRODUT P, PCEST E
+       WHERE P.CODPROD = E.CODPROD
+         AND P.DTEXCLUSAO IS NULL
+         AND E.CODFILIAL = 1
+         AND P.CODPROD IN (SELECT P.CODPROD
+                FROM PCPRODUT P
+               WHERE 'W' || P.CODPROD = v_codpeca
+              UNION
+              SELECT P.CODPROD
+                FROM PCPRODUT P
+               WHERE P.NUMORIGINAL LIKE v_codpeca
+              UNION
+              SELECT P.CODPROD
+                FROM PCPRODUT P
+               WHERE P.NUMORIGINAL IN
+                     (SELECT V.VIDE
+                        FROM ORCVIDE V
+                       WHERE V.VIDE IS NOT NULL
+                         AND V.CODPECA LIKE v_codpeca));
+      RETURN(SALDOGERAL);
+    END;

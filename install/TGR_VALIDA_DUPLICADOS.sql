@@ -1,0 +1,34 @@
+CREATE OR REPLACE TRIGGER TGR_VALIDA_DUPLICADOS
+ BEFORE 
+ INSERT
+ ON PCPRODUT
+ REFERENCING OLD AS OLD NEW AS NEW
+ FOR EACH ROW 
+DECLARE TOT INTEGER;
+BEGIN
+    
+
+  IF INSERTING THEN
+    SELECT COUNT(*) INTO TOT
+    FROM PCPRODUT
+    WHERE ((PCPRODUT.CODMARCA =:NEW.CODMARCA)
+    AND (PCPRODUT.numoriginal =:NEW.NUMORIGINAL));
+
+    IF TOT>0 THEN
+      RAISE_APPLICATION_ERROR(-20001,'Cadastro duplicado(Mesma MARCA e mesmo NUMORIGINAL)');
+    END IF;
+    
+   ELSE 
+     IF UPDATING THEN
+         SELECT COUNT(*) INTO TOT
+          FROM PCPRODUT
+          WHERE ((PCPRODUT.CODMARCA =:NEW.CODMARCA)
+          AND (PCPRODUT.numoriginal =:NEW.NUMORIGINAL));
+
+         IF TOT>0 THEN
+           RAISE_APPLICATION_ERROR(-20001,'Ja existe uma marca ou numoriginal igual ao que esta tentando modificar');
+         END IF;
+         
+     END IF;
+  END IF;
+END;
